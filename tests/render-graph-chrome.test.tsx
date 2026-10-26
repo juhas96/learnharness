@@ -39,6 +39,8 @@ describe("GraphChromeRow — the empty-graph ruling (owner, 2026-09-25)", () => 
 		const html = renderToStaticMarkup(createElement(GraphChromeRow, { ...PROPS, isEmpty: true }));
 		assert.ok(html.includes('data-testid="import-notes"'));
 		assert.ok(html.includes("Import notes…"));
+		assert.ok(html.includes("Import data…"));
+		assert.ok(html.includes("Export data…"));
 		assert.ok(!html.includes("Search nodes…"), "search is a lie on an empty graph");
 		// the settings gear is the lucide-settings svg (tooltip wave: its old
 		// native title is gone — the styled tooltip carries the label now)

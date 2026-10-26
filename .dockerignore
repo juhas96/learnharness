@@ -4,6 +4,9 @@ node_modules
 dist
 out
 data
+data-backups
+*.lhbackup
+.lh-import-*
 **/data
 .env*
 **/.env*

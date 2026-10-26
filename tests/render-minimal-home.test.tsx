@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
 import React from "react";
 import { describe, it } from "node:test";
-import { KnowledgeSummary } from "../components/minimal-home.tsx";
+import { KnowledgeSummary, MinimalHome } from "../components/minimal-home.tsx";
 
 function render(props: Partial<Parameters<typeof KnowledgeSummary>[0]> = {}) {
 	return renderToStaticMarkup(
@@ -23,6 +23,12 @@ function render(props: Partial<Parameters<typeof KnowledgeSummary>[0]> = {}) {
 }
 
 describe("KnowledgeSummary — the quiet home summary (2026-10-06)", () => {
+	it("keeps data import/export beside notes when graph rendering is off", () => {
+		const html = renderToStaticMarkup(React.createElement(MinimalHome));
+		assert.ok(html.includes("Import notes…"));
+		assert.ok(html.includes("Import data…"));
+		assert.ok(html.includes("Export data…"));
+	});
 	it("every count on its OWN line — no dot separators (owner refinement, same day)", () => {
 		const html = render();
 		for (const line of ["12 propositions", "5 chains", "3 teaching sessions", "2 practice sessions", "4 imported notes"]) {

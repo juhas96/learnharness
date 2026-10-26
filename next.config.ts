@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
 	// The manual copies the docs require — public/ and .next/static — are
 	// done by scripts/build-server.mjs.
 	output: "standalone",
+	// Backups must reach the route intact; proxy otherwise truncates uploads at 10 MiB.
+	experimental: { proxyClientMaxBodySize: 100 * 1024 * 1024 },
 	// SAFETY (empirically verified 2026-09-17): without this, output file
 	// tracing sweeps the repo's real data/ — chat records, graph ledgers —
 	// INTO the standalone bundle. A shipped desktop app would carry the
@@ -47,6 +49,9 @@ const nextConfig: NextConfig = {
 	outputFileTracingExcludes: {
 		"*": [
 			"**/data/**/*",
+			"**/data-backups/**/*",
+			"**/*.lhbackup",
+			"**/.lh-import-*/**/*",
 			"auth.json",
 			"chatgpt-credentials.json*",
 			"github-copilot-credentials.json*",

@@ -94,7 +94,7 @@ const isProvenancePoint = (v: unknown): v is ProvenancePoint =>
 	isRecord(v) && isString(v.chatId) && isString(v.messageId);
 
 
-const isGraphNode = (v: unknown): v is GraphNode =>
+export const isGraphNode = (v: unknown): v is GraphNode =>
 	isRecord(v) &&
 	isString(v.id) &&
 	isString(v.name) &&
@@ -109,7 +109,7 @@ const isGraphNode = (v: unknown): v is GraphNode =>
  *  ride the node ledger alone), every member a string, conclusion a string.
  *  Endpoint EXISTENCE is the derivation's concern (it drops dangling
  *  chains); the store only shapes. */
-const isGraphChain = (v: unknown): v is GraphChain =>
+export const isGraphChain = (v: unknown): v is GraphChain =>
 	isRecord(v) &&
 	isString(v.id) &&
 	Array.isArray(v.premises) &&
@@ -120,10 +120,10 @@ const isGraphChain = (v: unknown): v is GraphChain =>
 	v.provenance.every(isProvenancePoint) &&
 	isString(v.createdAt);
 
-const isCheckpoint = (v: unknown): v is SessionCheckpoint =>
+export const isCheckpoint = (v: unknown): v is SessionCheckpoint =>
 	isRecord(v) && isString(v.chatId) && isString(v.foldedAt);
 
-const isCoverageEntry = (v: unknown): v is CoverageEntry =>
+export const isCoverageEntry = (v: unknown): v is CoverageEntry =>
 	isRecord(v) && isString(v.chatId) && isString(v.fp) && typeof v.tokens === "number" && isString(v.foldedAt);
 
 // ─── the port implementation ────────────────────────────────────────────────
