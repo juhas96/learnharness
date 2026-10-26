@@ -4,7 +4,7 @@ import { parseHTML } from "linkedom";
 import { bindDockScroll } from "../components/dock-scroll.ts";
 
 const dom = parseHTML("<html><body></body></html>");
-Object.assign(globalThis, { Element: dom.window.Element, HTMLElement: dom.window.HTMLElement, getComputedStyle: (element: HTMLElement) => ({ overflowY: element.style.overflowY || "visible" }) });
+Object.assign(globalThis, { Element: dom.window.Element, HTMLElement: dom.window.HTMLElement, getComputedStyle: (element: HTMLElement) => ({ overflowY: element.style.overflowY || "visible", overscrollBehaviorY: element.style.overscrollBehaviorY || "auto" }) });
 function setup() {
 	const root = dom.document.createElement("div"), field = dom.document.createElement("textarea"), transcript = dom.document.createElement("div");
 	root.append(field);
@@ -83,4 +83,25 @@ test("wheel units keep working and cleanup removes both wheel and touch forwardi
 	touch(field, "touchstart", 100, 400);
 	touch(field, "touchmove", 100, 300);
 	assert.equal(transcript.scrollTop, 532);
+});
+
+test("contained questionnaires retain touch and wheel gestures at both edges instead of moving the transcript", () => {
+	const { field, transcript, dispose } = setup();
+	const pane = dom.document.createElement("div");
+	field.parentElement!.append(pane);
+	pane.append(field);
+	pane.style.overflowY = "auto";
+	pane.style.overscrollBehaviorY = "contain";
+	Object.defineProperties(pane, { scrollTop: { writable: true, value: 0 }, scrollHeight: { value: 600 }, clientHeight: { value: 200 } });
+	for (const [top, endY] of [[0, 500], [400, 300]]) {
+		pane.scrollTop = top!;
+		touch(field, "touchstart", 100, 400);
+		assert.equal(touch(field, "touchmove", 100, endY!).defaultPrevented, false);
+		const wheel = new dom.window.Event("wheel", { bubbles: true, cancelable: true });
+		Object.assign(wheel, { deltaY: top === 0 ? -100 : 100, deltaMode: 0 });
+		field.dispatchEvent(wheel);
+		assert.equal(wheel.defaultPrevented, false);
+		assert.equal(transcript.scrollTop, 500);
+	}
+	dispose();
 });

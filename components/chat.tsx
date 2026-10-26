@@ -2028,11 +2028,19 @@ function DockOverlay({
 		if (!el) return;
 		const measure = () => {
 			setSbInset(Math.round((el.offsetWidth - el.clientWidth) / 2));
-			setDockMaxH(Math.max(el.clientHeight - 32, 160));
+			const block = blockRef.current;
+			const question = expandedRef.current && !window.matchMedia("(min-width: 640px)").matches
+				? block?.querySelector<HTMLElement>('[data-testid="question-dock"]') : null;
+			// The mobile card includes answer controls; reserve room for stats, padding, and other dock siblings.
+			const outside = question && block ? Math.max(0, block.offsetHeight - question.offsetHeight) : 0;
+			setDockMaxH(question ? Math.max(el.clientHeight - outside - 32, 0) : Math.max(el.clientHeight - 32, 160));
 		};
 		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(el);
+		if (blockRef.current) observer.observe(blockRef.current);
 		window.addEventListener("resize", measure);
-		return () => window.removeEventListener("resize", measure);
+		return () => { observer.disconnect(); window.removeEventListener("resize", measure); };
 	}, [scrollRef]);
 
 	// GROWTH MUTE (owner round, 2026-10-05 — the generation churn): during a

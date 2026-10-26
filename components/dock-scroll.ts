@@ -2,7 +2,12 @@
 export function bindDockScroll(root: HTMLElement, transcript: HTMLElement): () => void {
 	function nativeScroll(target: EventTarget | null, delta: number): boolean {
 		for (let node = target instanceof Element ? target : null; node && node !== root; node = node.parentElement) {
-			if (!(node instanceof HTMLElement) || !/(auto|scroll)/.test(getComputedStyle(node).overflowY) || node.scrollHeight - node.clientHeight < 2) continue;
+			if (!(node instanceof HTMLElement)) continue;
+			const style = getComputedStyle(node);
+			if (!/(auto|scroll)/.test(style.overflowY)) continue;
+			// A contained questionnaire owns boundary gestures too; forwarding them collapses it.
+			if (style.overscrollBehaviorY === "contain" || style.overscrollBehaviorY === "none") return true;
+			if (node.scrollHeight - node.clientHeight < 2) continue;
 			if (delta < 0 ? node.scrollTop > 0 : node.scrollTop < node.scrollHeight - node.clientHeight - 0.5) return true;
 		}
 		return false;
