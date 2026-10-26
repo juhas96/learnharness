@@ -58,6 +58,83 @@ Sign-in opens a new tab in the browser that initiated it; permit that tab if you
 
 This remains a **trusted developer/shared-server mode**, not multi-user hosting. Subscription controls require same-origin JSON/custom-header requests; browser-opening actions are short-lived, origin-bound and one-use. These checks prevent ordinary cross-origin browser controls, **not user authentication or DNS-rebinding protection**. Do not expose an unprotected dev/server instance to untrusted users or the public Internet; a public deployment needs an independent access/host gate. Remote ChatGPT callback routing, per-user accounts and credential import are not implemented.
 
+## Single-workspace Docker hosting on Coolify
+
+The root `Dockerfile` runs the existing application unchanged: **one shared workspace**, not separate user accounts. Use a browser on your computer and phone to access `https://learn.devmoon.eu`. The upstream desktop app remains a separate local installation; it does not automatically connect or sync to this server.
+
+### Container and persistent storage
+
+In Coolify, select the **Dockerfile** build pack, repository-root build context, and container port **3000**. Run **one replica**; the file stores, background-job registries, and token refresh coordination assume one server process.
+
+Mount a persistent volume at **`/var/lib/learnharness`**. The image runs as UID/GID **1000:1000**; a bind-mounted directory must be writable by that user. The image already sets:
+
+| Variable | Container value |
+|---|---|
+| `LH_DATA_DIR` | `/var/lib/learnharness/data` — chats, graph, jobs, settings |
+| `LH_AUTH_FILE` | `/var/lib/learnharness/auth/auth.json` — saved provider keys |
+| `CHROME_PATH` | `/usr/bin/chromium` — demo verification |
+| `HOSTNAME` / `PORT` | `0.0.0.0` / `3000` |
+
+Subscription credential files live beside `auth.json`, so the same volume preserves them. The image includes Chromium and the platform-native PDF/SVG dependencies. Provider keys can be entered in Settings; environment variables still override saved values as in the upstream application. Never supply real keys as build arguments or copy `.env` files into the image.
+
+For a local Docker smoke:
+
+```sh
+docker build -t learnharness:local .
+docker volume create learnharness-state
+docker run --name learnharness --restart unless-stopped \
+  -p 127.0.0.1:3000:3000 \
+  -v learnharness-state:/var/lib/learnharness \
+  learnharness:local
+```
+
+This publishes only to the host's loopback address. In Coolify, use its persistent-storage configuration rather than creating a second volume manually. Rebuild/redeploy without deleting that volume.
+
+### Cloudflare Access is the authentication boundary
+
+There is **no application login or per-user isolation** in this setup. Everyone admitted through the gateway can use the same conversations, graph, keys, and subscriptions. Restrict access to yourself or explicitly trusted people.
+
+Recommended deployment:
+
+1. Run Cloudflare Tunnel on a private network that can reach the application container.
+2. Route `learn.devmoon.eu` to `http://<application-service>:3000`.
+3. Create a Cloudflare Access self-hosted application covering the **entire hostname**, including `/api/*`, and allow only your intended email identities.
+4. Do not publish the application port or leave an alternate public Coolify/Traefik route. Coolify's dashboard login does **not** protect deployed applications.
+5. Preserve the external `Host` and `X-Forwarded-Proto: https` headers. Allow streaming responses; do not add a “Cache Everything” rule for the application.
+
+The app does not validate Access JWTs itself in this minimal setup. An unprotected origin bypasses the gateway. Keep the container isolated from sensitive host mounts and services; the existing agent tools are intended for a trusted personal workspace.
+
+### Copy local data; never move or delete it
+
+Stop writes in the old local application, then make a separate backup of its data **and** credentials. Keep that backup off the hosted server as well. Work from a copy, never by mounting the original local directory into the container.
+
+Create a new staging directory on the server with this layout:
+
+```text
+learnharness-state/
+  data/    copied contents of the old learning-data directory
+  auth/    optional copied auth.json; subscription setup is separate below
+```
+
+With the hosted application stopped, copy the staged contents into an **empty** persistent volume. Do not merge over an already populated workspace. Set ownership to UID/GID 1000, restrict the `auth/` directory to mode 0700 and credential files to 0600, and compare file counts/checksums with the staging copy before starting the app. Confirm that the original local directory and your backup remain unchanged.
+
+Keep the local originals after cutover. Future hosted edits do not synchronize back to them. For ongoing backups, stop the application or use a consistent volume snapshot, back up **both `data/` and `auth/`**, encrypt the backup, store it off-server, and periodically test a restore into a separate volume. Never use `docker compose down -v` or delete the Coolify volume unless you intend to delete the hosted data.
+
+### ChatGPT subscriptions on a remote server
+
+Docker does not change ChatGPT's loopback OAuth callback. Clicking its normal login from a phone or remote browser cannot deliver that callback to the container. API keys and the existing device-code providers remain available, but are not a substitute for ChatGPT subscription billing.
+
+For ChatGPT, follow the provider's [self-hosted VM procedure](https://developers.openai.com/siwc/token-sharing-open-source/self-hosted-vms):
+
+1. Complete authorization locally using the existing desktop application and select the intended ChatGPT registration.
+2. Fully quit that application before transferring the session, so it does not compete with the server for rotating refresh tokens.
+3. Open Providers on the hosted app once to initialize its own credential record and host ID, then stop the hosted app.
+4. Securely transfer a **copy** of the selected registration to the server's `auth/chatgpt-credentials.json`. Preserve the server's own `hostId`; do not copy the desktop host ID over it. Preserve the selected registration's issued client ID, tokens, identity metadata, and background-use consent. Never paste credentials into chat, logs, or source control.
+5. Restart the hosted app and verify the connection and model catalog. The hosted server owns subsequent refreshes. Keep the old local file, but do not reuse that transferred session concurrently; later local use may require a new authorization.
+
+There is no new automatic credential-import feature in this minimal Docker change. This is an operator-managed transfer; live provider authorization and entitlement must be checked with the real account.
+
+
 ## Architecture
 
 Five layers, dependency arrows pointing inward only, machine-enforced as four ESLint zones (shell → barrels only; core and agent never import below themselves). Two composition roots, one writer per store. The full spec — layers, systems, runtime flows, invariants, seams: [`docs/architecture.md`](docs/architecture.md).

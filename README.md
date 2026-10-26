@@ -52,6 +52,13 @@ Add your provider API key and choose your models, then start a session with what
 
 All three platforms support in-app updates.
 
+### Self-host with Docker
+
+This fork also includes a Docker image definition for **one shared workspace** on Coolify. Open the hosted application in a browser on your computer or phone; protect access with Cloudflare Access and keep its origin private. There are no separate application user accounts.
+
+See [Docker/Coolify setup, persistent storage, and copy-only migration](docs/development.md#single-workspace-docker-hosting-on-coolify). Existing local data is not automatically moved, deleted, or synchronized.
+
+
 ## Your keys, your data
 
 - **Your keys and models.** No LearnHarness subscription or markup. You pay your providers for usage; a live cost meter shows model costs.
