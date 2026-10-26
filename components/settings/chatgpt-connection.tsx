@@ -6,6 +6,7 @@ import { ConnectionDialog, ConnectionFooter, ConnectionRow } from "./connection-
 import { Button } from "@/components/ui/button";
 import { Toggle } from "./controls";
 import { useChatGPTBridge } from "./subscription-client";
+import { ChatGPTImport } from "./chatgpt-import";
 
 export const CHATGPT_NOTICE = "LearnHarness stores your ChatGPT account details and credentials in an unencrypted local file on this device. When this connection is used, relevant conversation context, learning material, and tool results are sent directly to OpenAI. ChatGPT plan limits apply; any additional credits are authorized and managed in ChatGPT, not LearnHarness.";
 export function chatGPTNotice(web = false): string { return web ? `${CHATGPT_NOTICE.replace("on this device", "on the machine running LearnHarness")} Complete ChatGPT sign-in in a browser on that same machine.` : CHATGPT_NOTICE; }
@@ -38,6 +39,7 @@ const Context = createContext({
 	manage: (_id: string) => {},
 	select: (_id: string) => {},
 	dismissWarning: () => {},
+	imported: (_status: ChatGPTStatus) => {},
 });
 
 /** UI lifetime spans setup's keys → models transition. Only existing safe controls
@@ -252,6 +254,7 @@ export function ChatGPTUIProvider({ children }: { children: React.ReactNode }) {
 		},
 		select: (id: string) => { if (bridge) void control("change", () => bridge.select(id)); },
 		dismissWarning: () => { setDismissedError(REVOCATION_WARNING); setError(null); },
+		imported: (next: ChatGPTStatus) => { receive.current(next); setError(null); setDismissedError(null); },
 	};
 	return <Context.Provider value={context}>
 		{children}
@@ -337,6 +340,7 @@ export function ChatGPTConnection(_props: { setup?: boolean } = {}) {
 			{active && <select aria-label="ChatGPT account" value={active.id} disabled={ui.busy || ui.status.pending} onChange={(event) => ui.select(event.target.value)} className="min-w-0 rounded-sm border border-border bg-background px-2 py-1 text-xs text-foreground">
 				{accounts.map((a) => <option key={a.id} value={a.id}>{a.email || "ChatGPT account"}</option>)}
 			</select>}
+			<ChatGPTImport disabled={ui.busy || ui.status.pending} onImported={ui.imported} />
 		</ConnectionRow>
 		{ui.inlineError && <p role="alert" className="text-xs text-red-400">{ui.inlineError}</p>}
 		{ui.warning && <div role="alert" data-testid="chatgpt-revocation-warning" className="rounded-sm border border-border px-3 py-2 text-xs text-muted-foreground">{ui.warning}<button type="button" className="ml-2 cursor-pointer underline underline-offset-2" onClick={ui.dismissWarning}>Dismiss</button></div>}

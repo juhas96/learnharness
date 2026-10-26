@@ -350,6 +350,27 @@ function createChatGPT({ store, openExternal, fetch: request = globalThis.fetch,
 		return snapshot();
 	}
 	function cancelLogin() { pending?.cancel(); return snapshot(); }
+	/** Web-only caller owns the idle gate and private backup; imports never revoke the old account. */
+	async function importCredentials(raw, beforeWrite) {
+		const next = structuredClone(validateState(raw));
+		const account = next.registrations.find((r) => r.id === next.activeId);
+		if (!account || account.reconnectRequired || !planScopes(account.tokens) || !nonempty(account.tokens.refreshToken)) throw fail("identity");
+		await ready();
+		await serial(async () => {
+			if (closed || paused || pending) throw fail("pending");
+			beforeWrite();
+			stop();
+			const importEpoch = epoch;
+			await save(next);
+			if (closed || paused || epoch !== importEpoch || storageDenied) throw fail("disconnected");
+			backgroundIntent = undefined;
+			retryRegistration = undefined;
+			suspended = false;
+			lastError = null;
+			notify();
+		});
+		return snapshot();
+	}
 
 	function authorized(background, expected, capturedEpoch) {
 		const account = active();
@@ -536,7 +557,7 @@ function createChatGPT({ store, openExternal, fetch: request = globalThis.fetch,
 	function close() { closed = true; pending?.cancel(); stop(); }
 	function pause() { paused = true; pending?.cancel(); stop(); notify(); }
 	function resume() { paused = false; if (!storageDenied) suspended = false; notify(); }
-	return { status, login, cancelLogin, lease, models, select, consent, disconnect, logout, close, pause, resume, stamp };
+	return { status, login, cancelLogin, importCredentials, lease, models, select, consent, disconnect, logout, close, pause, resume, stamp };
 }
 
 module.exports = { createChatGPT, fileStore, publicError, allowedAuthEndpoint, SCOPES, validateState };

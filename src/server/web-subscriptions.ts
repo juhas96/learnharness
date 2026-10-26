@@ -39,7 +39,7 @@ async function loadSDK() {
 /** Injectable factories/stores keep all test authentication offline. */
 export function createWebSubscriptionOwner(options: {
 	directory: string;
-	chatgptStore?: Parameters<typeof createChatGPT>[0]["store"];
+	chatgptStore?: ReturnType<typeof fileStore>;
 	sdk?: unknown;
 	onPacket?: (channel: Channel, packet: Packet) => void;
 } ) {
@@ -47,6 +47,7 @@ export function createWebSubscriptionOwner(options: {
 	const launches = new AsyncLocalStorage<string[]>();
 	const actions = new Map<string, BrowserAction>();
 	let chatGPTLaunch = 0;
+	let importingChatGPT = false;
 	const openExternal = async (target: string) => {
 		const captured = launches.getStore();
 		if (!captured || new URL(target).protocol !== "https:") throw new Error("No browser action is pending.");
@@ -63,7 +64,14 @@ export function createWebSubscriptionOwner(options: {
 	});
 	return {
 		chatgpt, native,
+		async importChatGPT(raw: unknown, beforeWrite: () => void) {
+			if (importingChatGPT) throw new Error("A ChatGPT import is already running.");
+			importingChatGPT = true;
+			try { return await chatgpt.importCredentials(raw, beforeWrite); }
+			finally { importingChatGPT = false; }
+		},
 		async control(providerId: string, command: Record<string, unknown>, origin: string) {
+			if (providerId === "chatgpt" && importingChatGPT) throw new Error("A ChatGPT import is already running.");
 			const targets: string[] = [];
 			const value = await launches.run(targets, () => providerId === "chatgpt"
 				? chatGPTControl(command, chatgpt)

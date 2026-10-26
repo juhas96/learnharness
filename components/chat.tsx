@@ -1,5 +1,7 @@
 "use client";
 
+import { bindDockScroll } from "@/components/dock-scroll";
+
 import { createContext, Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useChatSession } from "@/components/session";
 import { visibleQueuedSteers } from "@/components/session-core";
@@ -2056,7 +2058,7 @@ function DockOverlay({
 		return () => ro.disconnect();
 	}, [scrollRef]);
 
-	// Wheel over the dock must still scroll the transcript (owner, scroll
+	// Wheel/touch over the dock must still scroll the transcript (owner, scroll
 	// round 2): the overlay is a SIBLING of the scroller, so the browser's
 	// native scroll chaining stops at the overlay (the old in-flow dock
 	// chained for free). Internal scrollers — the question area, textarea
@@ -2067,20 +2069,7 @@ function DockOverlay({
 		const root = blockRef.current;
 		const el = scrollRef.current;
 		if (!root || !el) return;
-		const canScroll = (n: HTMLElement, dir: number) => {
-			if (n.scrollHeight - n.clientHeight < 2) return false; // not scrollable
-			return dir < 0 ? n.scrollTop > 0 : n.scrollTop < n.scrollHeight - n.clientHeight - 0.5;
-		};
-		const onWheel = (e: WheelEvent) => {
-			if (e.deltaY === 0) return;
-			for (let n = e.target as HTMLElement | null; n && n !== root; n = n.parentElement) {
-				if (n instanceof HTMLElement && canScroll(n, e.deltaY)) return; // native
-			}
-			e.preventDefault();
-			el.scrollTop += e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? el.clientHeight : 1);
-		};
-		root.addEventListener("wheel", onWheel, { passive: false });
-		return () => root.removeEventListener("wheel", onWheel);
+		return bindDockScroll(root, el);
 	}, [scrollRef]);
 
 	// ── The reserve: the spacer's height, reported upward ──

@@ -8,19 +8,19 @@ import { runningTurn } from "./turn-runs.ts";
 import { compactionInFlight } from "./compaction.ts";
 import { emit } from "../core/events.ts";
 
-function assertIdle(): void {
+export function assertDataTransferIdle(): void {
 	if (extractionStatuses().length || chatStore.listChats().some((chat) => isTurnRunning(chat.id) || runningTurn(chat.id) || compactionInFlight(chat.id) || jobStore.listJobs(chat.id).some((job) => job.status === "running" || job.delivery?.status === "pending"))) {
 		throw new Error("Wait for lessons, background jobs, and extractions to finish before transferring data.");
 	}
 }
 
 export function exportLearningData(): Buffer {
-	assertIdle();
+	assertDataTransferIdle();
 	return exportData(PATHS.data);
 }
 
 export function importLearningData(data: Buffer, replace: boolean) {
-	assertIdle();
+	assertDataTransferIdle();
 	const result = importData(PATHS.data, data, replace);
 	emit("chats-changed", {});
 	emit("jobs-changed", {});

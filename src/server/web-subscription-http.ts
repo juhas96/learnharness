@@ -1,5 +1,6 @@
 import { NATIVE_SUBSCRIPTIONS } from "../core/contracts/subscriptions.ts";
 import { webSubscriptionOwner, webSubscriptionsEnabled, webSubscriptionStatus } from "./web-subscriptions.ts";
+import { importChatGPTCredentials } from "./chatgpt-import.ts";
 
 const HEADERS = { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff" };
 /** Same-origin browser controls, not user authentication. Web/dev deliberately
@@ -22,6 +23,36 @@ function authorized(request: Request): boolean {
 	return request.method === "GET" ? !supplied || supplied === origin : supplied === origin;
 }
 function error(message: string, status: number) { return Response.json({ error: message }, { status, headers: HEADERS }); }
+
+export async function chatGPTCredentialImportResponse(request: Request): Promise<Response> {
+	if (!webSubscriptionsEnabled()) return error("Credential import is only available in the web app.", 404);
+	if (request.method !== "POST") return error("Unsupported method.", 405);
+	if (!authorized(request)) return error("Credential import requires a same-origin LearnHarness request.", 403);
+	if (request.headers.get("content-type")?.split(";")[0]?.trim() !== "application/json") return error("Choose a ChatGPT JSON credentials file.", 415);
+	const limit = 128 * 1024;
+	if (Number(request.headers.get("content-length")) > limit) return error("Credential file exceeds 128 KiB.", 413);
+	const reader = request.body?.getReader();
+	if (!reader) return error("Choose a ChatGPT JSON credentials file.", 400);
+	let raw: unknown;
+	try {
+		const chunks: Uint8Array[] = [];
+		let size = 0;
+		for (;;) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			size += value.byteLength;
+			if (size > limit) { await reader.cancel(); return error("Credential file exceeds 128 KiB.", 413); }
+			chunks.push(value);
+		}
+		raw = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+	} catch { return error("Choose a valid chatgpt-credentials.json file.", 400); }
+	finally { reader.releaseLock(); }
+	try {
+		return Response.json(await importChatGPTCredentials(raw), { headers: HEADERS });
+	} catch {
+		return error("ChatGPT import did not complete. Check that the file contains a saved connected account, finish active lessons and jobs, cancel pending sign-in, then retry. Existing credentials are backed up before replacement.", 409);
+	}
+}
 export async function subscriptionControlsResponse(request: Request): Promise<Response> {
 	if (!webSubscriptionsEnabled()) return error("Web subscription controls are unavailable in desktop-owned mode.", 404);
 	if (!authorized(request)) return error("Subscription controls require a same-origin LearnHarness request.", 403);
