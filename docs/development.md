@@ -60,7 +60,7 @@ This remains a **trusted developer/shared-server mode**, not multi-user hosting.
 
 ## Single-workspace Docker hosting on Coolify
 
-The root `Dockerfile` runs the existing application unchanged: **one shared workspace**, not separate user accounts. Use a browser on your computer and phone to access `https://learn.devmoon.eu`. The upstream desktop app remains a separate local installation; it does not automatically connect or sync to this server.
+The root `Dockerfile` runs the existing application unchanged: **one shared workspace**, not separate user accounts. Use a browser on your computer and phone to access `website`. The upstream desktop app remains a separate local installation; it does not automatically connect or sync to this server.
 
 ### Container and persistent storage
 
@@ -97,7 +97,6 @@ There is **no application login or per-user isolation** in this setup. Everyone 
 Recommended deployment:
 
 1. Run Cloudflare Tunnel on a private network that can reach the application container.
-2. Route `learn.devmoon.eu` to `http://<application-service>:3000`.
 3. Create a Cloudflare Access self-hosted application covering the **entire hostname**, including `/api/*`, and allow only your intended email identities.
 4. Do not publish the application port or leave an alternate public Coolify/Traefik route. Coolify's dashboard login does **not** protect deployed applications.
 5. Preserve the external `Host` and `X-Forwarded-Proto: https` headers. Allow streaming responses; do not add a “Cache Everything” rule for the application.
