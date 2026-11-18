@@ -9,6 +9,7 @@ import React from "react";
 import { describe, it } from "node:test";
 import { KnowledgeSummary, MinimalHome } from "../components/minimal-home.tsx";
 import { ServerEventsProvider } from "../components/server-events.tsx";
+import { InteractionLayersProvider } from "../components/interaction-layers.tsx";
 
 function render(props: Partial<Parameters<typeof KnowledgeSummary>[0]> = {}) {
 	return renderToStaticMarkup(
@@ -25,7 +26,7 @@ function render(props: Partial<Parameters<typeof KnowledgeSummary>[0]> = {}) {
 
 describe("KnowledgeSummary — the quiet home summary (2026-10-06)", () => {
 	it("keeps data import/export beside notes when graph rendering is off", () => {
-		const html = renderToStaticMarkup(React.createElement(ServerEventsProvider, { children: React.createElement(MinimalHome) }));
+		const html = renderToStaticMarkup(React.createElement(InteractionLayersProvider, { children: React.createElement(ServerEventsProvider, { children: React.createElement(MinimalHome) }) }));
 		assert.ok(html.includes("Extract files…"));
 		assert.ok(html.includes("Import data…"));
 		assert.ok(html.includes("Export data…"));

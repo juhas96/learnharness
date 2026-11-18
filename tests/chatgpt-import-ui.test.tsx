@@ -5,17 +5,21 @@ import { afterEach, test } from "node:test";
 import { createRoot, type Root } from "react-dom/client";
 import { parseHTML } from "linkedom";
 import { ChatGPTImport } from "../components/settings/chatgpt-import.tsx";
+import { InteractionLayersProvider } from "../components/interaction-layers.tsx";
 import type { ChatGPTStatus } from "../src/core/index.ts";
 
 const dom = parseHTML("<html><body></body></html>");
-Object.assign(globalThis, { window: dom.window, document: dom.document, Element: dom.window.Element, HTMLElement: dom.window.HTMLElement, IS_REACT_ACT_ENVIRONMENT: true });
+// The modal layer reads computed overflow/position; linkedom has no layout engine.
+const style = (element: HTMLElement) => ({ position: element.style.position || "static", overflow: element.style.overflow || "visible", paddingRight: "0px", marginRight: "0px", borderRightWidth: "0px" }) as unknown as CSSStyleDeclaration;
+Object.assign(dom.window, { getComputedStyle: style, innerWidth: 1200 });
+Object.assign(globalThis, { window: dom.window, document: dom.document, Element: dom.window.Element, HTMLElement: dom.window.HTMLElement, Node: dom.window.Node, MutationObserver: dom.window.MutationObserver, CustomEvent: dom.window.CustomEvent, NodeFilter: { SHOW_ELEMENT: 1, FILTER_ACCEPT: 1, FILTER_SKIP: 3 }, getComputedStyle: style, IS_REACT_ACT_ENVIRONMENT: true });
 const originalFetch = globalThis.fetch;
 let root: Root | undefined, host: HTMLDivElement | undefined;
 afterEach(async () => { await act(async () => root?.unmount()); host?.remove(); root = undefined; host = undefined; delete window.lh; globalThis.fetch = originalFetch; });
 const status: ChatGPTStatus = { available: true, pending: false, allowBackgroundUse: false, activeId: "test-account", accounts: [{ id: "test-account", email: "import@example.invalid", registration: "oaiapp_test", connected: true }], error: null };
 async function mount(onImported: (status: ChatGPTStatus) => void = () => {}) {
 	host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-	await act(async () => root!.render(<ChatGPTImport disabled={false} onImported={onImported} />));
+	await act(async () => root!.render(<InteractionLayersProvider><ChatGPTImport disabled={false} onImported={onImported} /></InteractionLayersProvider>));
 }
 const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === text)!;
 async function click(text: string) { await act(async () => button(text).click()); }

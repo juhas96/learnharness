@@ -87,6 +87,8 @@ Mount a persistent volume at **`/var/lib/learnharness`**. The image runs as UID/
 | `CHROME_PATH` | `/usr/bin/chromium` — demo verification |
 | `HOSTNAME` / `PORT` | `0.0.0.0` / `3000` |
 
+Set **`LH_ALLOWED_HOSTS`** in Coolify to the public hostname, for example `learn.example.com`. The API refuses every request whose host name is not `localhost`, an IP address, or listed there, so the hosted app shows only errors until it is set. Browser writes must also come from the same origin as the page.
+
 Subscription credential files live beside `auth.json`, so the same volume preserves them. The image includes Chromium and the platform-native PDF/SVG dependencies. Provider keys can be entered in Settings; environment variables still override saved values as in the upstream application. Never supply real keys as build arguments or copy `.env` files into the image.
 
 For a local Docker smoke:
